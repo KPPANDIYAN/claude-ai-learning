@@ -75,7 +75,36 @@ while True:
     print(claude_answer)
 
     if response.stop_reason == "max_tokens":
+
         print("\nClaude reached the maximum output token limit.")
+
+        continue_choice = input(
+            "Type 'continue' if you want Claude to continue: "
+        )
+
+        if continue_choice.lower() == "continue":
+
+            messages.append({
+                "role": "assistant",
+                "content": claude_answer
+            })
+
+            messages.append({
+                "role": "user",
+                "content": "Continue from where you stopped."
+            })
+
+            response = client.messages.create(
+                model="claude-haiku-4-5-20251001",
+                max_tokens=500,
+                system="You are an experienced automation testing engineer.",
+                messages=messages
+            )
+
+            claude_answer = response.content[0].text
+
+            print("\nClaude continued response:")
+            print(claude_answer)
 
     messages.append({
         "role": "assistant",
