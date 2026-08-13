@@ -31,6 +31,37 @@ def add_message(messages, role, content):
     })
 
 
+def handle_continuation(response, claude_answer, messages):
+
+    while response.stop_reason == "max_tokens":
+
+        print("\nClaude reached the maximum output token limit.")
+
+        continue_choice = input(
+            "Type 'continue' if you want Claude to continue, "
+            "otherwise press Enter: "
+        )
+
+        if continue_choice.lower() == "exit":
+            print("Exiting chat...")
+            exit()
+
+        if continue_choice.lower() != "continue":
+            break
+
+        add_message(messages, "assistant", claude_answer)
+        add_message(messages, "user", CONTINUE_PROMPT)
+
+        response = get_claude_response(messages)
+
+        claude_answer = response.content[0].text
+
+        print("\nClaude continued response:")
+        print(claude_answer)
+
+    return response, claude_answer
+
+
 while True:
 
     user_question = input("\nYou: ")
@@ -86,30 +117,10 @@ while True:
     print("\nClaude:")
     print(claude_answer)
 
-    while response.stop_reason == "max_tokens":
-
-        print("\nClaude reached the maximum output token limit.")
-
-        continue_choice = input(
-            "Type 'continue' if you want Claude to continue, "
-            "otherwise press Enter: "
-        )
-
-        if continue_choice.lower() == "exit":
-            print("Exiting chat...")
-            exit()
-
-        if continue_choice.lower() != "continue":
-            break
-
-        add_message(messages, "assistant", claude_answer)
-        add_message(messages, "user", CONTINUE_PROMPT)
-
-        response = get_claude_response(messages)
-
-        claude_answer = response.content[0].text
-
-        print("\nClaude continued response:")
-        print(claude_answer)
+    response, claude_answer = handle_continuation(
+        response,
+        claude_answer,
+        messages
+    )
 
     add_message(messages, "assistant", claude_answer)
