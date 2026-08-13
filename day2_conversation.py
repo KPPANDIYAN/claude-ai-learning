@@ -31,6 +31,43 @@ def add_message(messages, role, content):
     })
 
 
+def call_claude_safely(messages):
+
+    try:
+        return get_claude_response(messages)
+
+    except anthropic.NotFoundError as e:
+        print("\nModel or resource not found:")
+        print(e)
+
+    except anthropic.AuthenticationError:
+        print("\nAuthentication failed.")
+        print("Please check whether ANTHROPIC_API_KEY is set correctly.")
+
+    except anthropic.RateLimitError:
+        print("\nRate limit reached.")
+        print("Waiting 5 seconds before retrying...")
+
+        time.sleep(5)
+
+        try:
+            return get_claude_response(messages)
+
+        except Exception as retry_error:
+            print("\nRetry also failed:")
+            print(retry_error)
+
+    except anthropic.APIConnectionError as e:
+        print("\nUnable to connect to Anthropic API:")
+        print(e)
+
+    except anthropic.APIStatusError as e:
+        print("\nAnthropic API returned an error:")
+        print(e)
+
+    return None
+
+
 def handle_continuation(response, claude_answer, messages):
 
     while response.stop_reason == "max_tokens":
@@ -52,7 +89,10 @@ def handle_continuation(response, claude_answer, messages):
         add_message(messages, "assistant", claude_answer)
         add_message(messages, "user", CONTINUE_PROMPT)
 
-        response = get_claude_response(messages)
+        response = call_claude_safely(messages)
+
+        if response is None:
+            return None, claude_answer
 
         claude_answer = response.content[0].text
 
@@ -71,41 +111,9 @@ while True:
 
     add_message(messages, "user", user_question)
 
-    try:
-        response = get_claude_response(messages)
+    response = call_claude_safely(messages)
 
-    except anthropic.NotFoundError as e:
-        print("\nModel or resource not found:")
-        print(e)
-        break
-
-    except anthropic.AuthenticationError:
-        print("\nAuthentication failed.")
-        print("Please check whether ANTHROPIC_API_KEY is set correctly.")
-        break
-
-    except anthropic.RateLimitError:
-        print("\nRate limit reached.")
-        print("Waiting 5 seconds before retrying...")
-
-        time.sleep(5)
-
-        try:
-            response = get_claude_response(messages)
-
-        except Exception as retry_error:
-            print("\nRetry also failed:")
-            print(retry_error)
-            break
-
-    except anthropic.APIConnectionError as e:
-        print("\nUnable to connect to Anthropic API:")
-        print(e)
-        break
-
-    except anthropic.APIStatusError as e:
-        print("\nAnthropic API returned an error:")
-        print(e)
+    if response is None:
         break
 
     print("\nInput tokens:", response.usage.input_tokens)
@@ -122,5 +130,8 @@ while True:
         claude_answer,
         messages
     )
+
+    if response is None:
+        break
 
     add_message(messages, "assistant", claude_answer)
