@@ -1,3 +1,4 @@
+import time
 import anthropic
 from anthropic import Anthropic
 
@@ -35,10 +36,24 @@ while True:
         print("Please check whether ANTHROPIC_API_KEY is set correctly.")
         break
 
-    except anthropic.RateLimitError as e:
-        print("\nRate limit reached. Please try again later:")
-        print(e)
-        break
+    except anthropic.RateLimitError:
+        print("\nRate limit reached.")
+        print("Waiting 5 seconds before retrying...")
+
+        time.sleep(5)
+
+        try:
+            response = client.messages.create(
+                model="claude-haiku-4-5-20251001",
+                max_tokens=500,
+                system="You are an experienced automation testing engineer.",
+                messages=messages
+            )
+
+        except Exception as retry_error:
+            print("\nRetry also failed:")
+            print(retry_error)
+            break
 
     except anthropic.APIConnectionError as e:
         print("\nUnable to connect to Anthropic API:")
