@@ -6,6 +6,10 @@ client = Anthropic()
 
 messages = []
 
+MODEL_NAME = "claude-haiku-4-5-20251001"
+MAX_TOKENS = 500
+SYSTEM_PROMPT = "You are an experienced automation testing engineer."
+
 CONTINUE_PROMPT = (
     "Continue exactly from where your previous response ended. "
     "Do not repeat any heading, explanation, code, or content that "
@@ -15,9 +19,9 @@ CONTINUE_PROMPT = (
 
 def get_claude_response(messages):
     response = client.messages.create(
-        model="claude-haiku-4-5-20251001",
-        max_tokens=500,
-        system="You are an experienced automation testing engineer.",
+        model=MODEL_NAME,
+        max_tokens=MAX_TOKENS,
+        system=SYSTEM_PROMPT,
         messages=messages
     )
 
@@ -76,7 +80,7 @@ def handle_continuation(response, claude_answer, messages):
 
         continue_choice = input(
             "Type 'continue' if you want Claude to continue, "
-            "otherwise press Enter: "
+            "press Enter to stop continuing, or type 'exit' to quit: "
         )
 
         if continue_choice.lower() == "exit":
@@ -107,6 +111,7 @@ while True:
     user_question = input("\nYou: ")
 
     if user_question.lower() == "exit":
+        print("Exiting chat...")
         break
 
     add_message(messages, "user", user_question)
@@ -118,7 +123,6 @@ while True:
 
     print("\nInput tokens:", response.usage.input_tokens)
     print("Output tokens:", response.usage.output_tokens)
-    print("Stop reason:", response.stop_reason)
 
     claude_answer = response.content[0].text
 
