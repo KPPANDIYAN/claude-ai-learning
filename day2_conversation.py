@@ -1,3 +1,4 @@
+import anthropic
 from anthropic import Anthropic
 
 client = Anthropic()
@@ -16,12 +17,38 @@ while True:
         "content": user_question
     })
 
-    response = client.messages.create(
-        model="claude-haiku-4-5-20251001",
-        max_tokens=500,
-        system="You are an experienced automation testing engineer.",
-        messages=messages
-    )
+    try:
+        response = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=500,
+            system="You are an experienced automation testing engineer.",
+            messages=messages
+        )
+
+    except anthropic.NotFoundError as e:
+        print("\nModel or resource not found:")
+        print(e)
+        break
+
+    except anthropic.AuthenticationError:
+        print("\nAuthentication failed.")
+        print("Please check whether ANTHROPIC_API_KEY is set correctly.")
+        break
+
+    except anthropic.RateLimitError as e:
+        print("\nRate limit reached. Please try again later:")
+        print(e)
+        break
+
+    except anthropic.APIConnectionError as e:
+        print("\nUnable to connect to Anthropic API:")
+        print(e)
+        break
+
+    except anthropic.APIStatusError as e:
+        print("\nAnthropic API returned an error:")
+        print(e)
+        break
 
     print("\nInput tokens:", response.usage.input_tokens)
     print("Output tokens:", response.usage.output_tokens)
