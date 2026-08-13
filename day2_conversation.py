@@ -12,6 +12,25 @@ CONTINUE_PROMPT = (
     "you already provided. Start immediately with the missing continuation."
 )
 
+
+def get_claude_response(messages):
+    response = client.messages.create(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=500,
+        system="You are an experienced automation testing engineer.",
+        messages=messages
+    )
+
+    return response
+
+
+def add_message(messages, role, content):
+    messages.append({
+        "role": role,
+        "content": content
+    })
+
+
 while True:
 
     user_question = input("\nYou: ")
@@ -19,18 +38,10 @@ while True:
     if user_question.lower() == "exit":
         break
 
-    messages.append({
-        "role": "user",
-        "content": user_question
-    })
+    add_message(messages, "user", user_question)
 
     try:
-        response = client.messages.create(
-            model="claude-haiku-4-5-20251001",
-            max_tokens=500,
-            system="You are an experienced automation testing engineer.",
-            messages=messages
-        )
+        response = get_claude_response(messages)
 
     except anthropic.NotFoundError as e:
         print("\nModel or resource not found:")
@@ -49,12 +60,7 @@ while True:
         time.sleep(5)
 
         try:
-            response = client.messages.create(
-                model="claude-haiku-4-5-20251001",
-                max_tokens=500,
-                system="You are an experienced automation testing engineer.",
-                messages=messages
-            )
+            response = get_claude_response(messages)
 
         except Exception as retry_error:
             print("\nRetry also failed:")
@@ -96,29 +102,14 @@ while True:
         if continue_choice.lower() != "continue":
             break
 
-        messages.append({
-            "role": "assistant",
-            "content": claude_answer
-        })
+        add_message(messages, "assistant", claude_answer)
+        add_message(messages, "user", CONTINUE_PROMPT)
 
-        messages.append({
-            "role": "user",
-            "content": CONTINUE_PROMPT
-        })
-
-        response = client.messages.create(
-            model="claude-haiku-4-5-20251001",
-            max_tokens=500,
-            system="You are an experienced automation testing engineer.",
-            messages=messages
-        )
+        response = get_claude_response(messages)
 
         claude_answer = response.content[0].text
 
         print("\nClaude continued response:")
         print(claude_answer)
 
-    messages.append({
-        "role": "assistant",
-        "content": claude_answer
-    })
+    add_message(messages, "assistant", claude_answer)
