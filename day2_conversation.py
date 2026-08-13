@@ -6,6 +6,12 @@ client = Anthropic()
 
 messages = []
 
+CONTINUE_PROMPT = (
+    "Continue exactly from where your previous response ended. "
+    "Do not repeat any heading, explanation, code, or content that "
+    "you already provided. Start immediately with the missing continuation."
+)
+
 while True:
 
     user_question = input("\nYou: ")
@@ -74,37 +80,43 @@ while True:
     print("\nClaude:")
     print(claude_answer)
 
-    if response.stop_reason == "max_tokens":
+    while response.stop_reason == "max_tokens":
 
         print("\nClaude reached the maximum output token limit.")
 
         continue_choice = input(
-            "Type 'continue' if you want Claude to continue: "
+            "Type 'continue' if you want Claude to continue, "
+            "otherwise press Enter: "
         )
 
-        if continue_choice.lower() == "continue":
+        if continue_choice.lower() == "exit":
+            print("Exiting chat...")
+            exit()
 
-            messages.append({
-                "role": "assistant",
-                "content": claude_answer
-            })
+        if continue_choice.lower() != "continue":
+            break
 
-            messages.append({
-                "role": "user",
-                "content": "Continue from where you stopped."
-            })
+        messages.append({
+            "role": "assistant",
+            "content": claude_answer
+        })
 
-            response = client.messages.create(
-                model="claude-haiku-4-5-20251001",
-                max_tokens=500,
-                system="You are an experienced automation testing engineer.",
-                messages=messages
-            )
+        messages.append({
+            "role": "user",
+            "content": CONTINUE_PROMPT
+        })
 
-            claude_answer = response.content[0].text
+        response = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=500,
+            system="You are an experienced automation testing engineer.",
+            messages=messages
+        )
 
-            print("\nClaude continued response:")
-            print(claude_answer)
+        claude_answer = response.content[0].text
+
+        print("\nClaude continued response:")
+        print(claude_answer)
 
     messages.append({
         "role": "assistant",
