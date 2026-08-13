@@ -74,6 +74,9 @@ while True:
     print("\nClaude:")
     print(claude_answer)
 
+    if response.stop_reason == "max_tokens":
+        print("\nClaude reached the maximum output token limit.")
+
     messages.append({
         "role": "assistant",
         "content": claude_answer
