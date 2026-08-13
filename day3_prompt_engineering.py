@@ -8,18 +8,23 @@ SYSTEM_PROMPT = (
 )
 
 USER_PROMPT = """
-Explain Selenium to someone who knows Java but is new to automation.
+    Task:
+    Explain Selenium.
 
-Cover:
-1. What Selenium is
-2. Why it is used
-3. Main components
-4. One simple example
+    Context:
+    The reader knows Java but is new to automation testing.
 
-Constraints:
-- Keep the answer under 300 words.
-- Use simple language.
-- Use clear headings.
+    Constraints:
+    - Keep the answer under 300 words.
+    - Use simple beginner-friendly language.
+    - Avoid unnecessary advanced details.
+
+    Output Format:
+    Use these sections:
+    1. What Selenium is
+    2. Why Selenium is used
+    3. Main Selenium components
+    4. One simple Java example
 """
 
 response = client.messages.create(
