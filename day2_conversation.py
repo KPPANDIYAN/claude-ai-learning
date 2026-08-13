@@ -23,6 +23,10 @@ while True:
         messages=messages
     )
 
+    print("\nInput tokens:", response.usage.input_tokens)
+    print("Output tokens:", response.usage.output_tokens)
+    print("Stop reason:", response.stop_reason)
+
     claude_answer = response.content[0].text
 
     print("\nClaude:")
