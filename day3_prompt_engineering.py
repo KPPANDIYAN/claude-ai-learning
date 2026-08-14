@@ -9,25 +9,28 @@ SYSTEM_PROMPT = (
 )
 
 USER_PROMPT = """
-Task:
-Explain Selenium.
+    Task:
+    Analyze the following Selenium test failure.
 
-Context:
-The reader knows Java but is new to automation testing.
+    Context:
+    The test failed while trying to click the login button.
 
-Constraints:
-- Use simple beginner-friendly language.
-- Keep each explanation short.
-- Return only valid JSON.
-- Do not add Markdown.
-- Do not add any text before or after the JSON.
+    Failure:
+    NoSuchElementException: Unable to locate element with id 'login-button'
 
-Output Format:
-{
-  "what_is_selenium": "<answer>",
-  "why_it_is_used": "<answer>",
-  "main_components": "<answer>",
-  "simple_java_example": "<answer>"     
+    Constraints:
+    - Use simple technical language.
+    - Return only valid JSON.
+    - Do not add Markdown.
+    - Do not add any text before or after the JSON.
+
+    Output Format:
+    {
+    "failure_type": "<type of failure>",
+    "possible_root_cause": "<likely root cause>",
+    "evidence": "<evidence from the failure message>",
+    "recommended_action": "<what the tester should do next>",
+    "confidence": "<high, medium, or low>"
 }
 """
 
@@ -89,10 +92,11 @@ try:
     # ----------------------------------
 
     required_fields = [
-        "what_is_selenium",
-        "why_it_is_used",
-        "main_components",
-        "simple_java_example"
+        "failure_type",
+        "possible_root_cause",
+        "evidence",
+        "recommended_action",
+        "confidence"
     ]
 
     missing_fields = []
@@ -120,17 +124,20 @@ try:
         # Access individual values safely
         # ----------------------------------
 
-        print("\nWhat is Selenium:")
-        print(data.get("what_is_selenium"))
+        print("\nFailure type:")
+        print(data.get("failure_type"))
 
-        print("\nWhy it is used:")
-        print(data.get("why_it_is_used"))
+        print("\nPossible root cause:")
+        print(data.get("possible_root_cause"))
 
-        print("\nMain components:")
-        print(data.get("main_components"))
+        print("\nEvidence:")
+        print(data.get("evidence"))
 
-        print("\nSimple Java example:")
-        print(data.get("simple_java_example"))
+        print("\nRecommended action:")
+        print(data.get("recommended_action"))
+
+        print("\nConfidence:")
+        print(data.get("confidence"))
 
     # ----------------------------------
     # Deliberately test a missing key
