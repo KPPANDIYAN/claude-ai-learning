@@ -15,16 +15,19 @@ USER_PROMPT = """
     The reader knows Java but is new to automation testing.
 
     Constraints:
-    - Keep the answer under 300 words.
     - Use simple beginner-friendly language.
-    - Avoid unnecessary advanced details.
+    - Keep each explanation short.
+    - Return only valid JSON.
+    - Do not add Markdown.
+    - Do not add any text before or after the JSON.
 
     Output Format:
-    Use these sections:
-    1. What Selenium is
-    2. Why Selenium is used
-    3. Main Selenium components
-    4. One simple Java example
+    {
+    "what_is_selenium": "<answer>",
+    "why_it_is_used": "<answer>",
+    "main_components": "<answer>",
+    "simple_java_example": "<answer>"
+    }
 """
 
 response = client.messages.create(
