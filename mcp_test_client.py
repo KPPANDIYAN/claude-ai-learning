@@ -32,8 +32,7 @@ async def main():
 
 
             # --------------------------------------------------
-            # CONVERT MCP TOOL DEFINITIONS
-            # INTO ANTHROPIC TOOL FORMAT
+            # CONVERT MCP TOOLS FOR CLAUDE
             # --------------------------------------------------
 
             claude_tools = []
@@ -56,7 +55,7 @@ async def main():
 
 
             # --------------------------------------------------
-            # USER GOAL
+            # CONVERSATION STATE
             # --------------------------------------------------
 
             messages = [
@@ -73,7 +72,7 @@ async def main():
 
 
             # --------------------------------------------------
-            # ASK CLAUDE TO DECIDE WHICH TOOLS ARE NEEDED
+            # FIRST CLAUDE DECISION
             # --------------------------------------------------
 
             response = claude.messages.create(
@@ -89,6 +88,123 @@ async def main():
 
             print("\nClaude response:")
             print(response.content)
+
+
+            # --------------------------------------------------
+            # STORE CLAUDE'S TOOL REQUEST
+            # --------------------------------------------------
+
+            messages.append(
+                {
+                    "role": "assistant",
+                    "content": response.content
+                }
+            )
+
+
+            # --------------------------------------------------
+            # EXECUTE CLAUDE-REQUESTED MCP TOOLS
+            # --------------------------------------------------
+
+            if response.stop_reason == "tool_use":
+
+                tool_results = []
+
+                for block in response.content:
+
+                    if block.type != "tool_use":
+                        continue
+
+
+                    print("\nClaude requested tool:")
+                    print(block.name)
+
+                    print("\nInput:")
+                    print(block.input)
+
+
+                    # ------------------------------------------
+                    # DYNAMIC MCP TOOL INVOCATION
+                    # ------------------------------------------
+
+                    mcp_result = await session.call_tool(
+                        block.name,
+                        block.input
+                    )
+
+
+                    # ------------------------------------------
+                    # EXTRACT RESULT
+                    # ------------------------------------------
+
+                    if (
+                        mcp_result.structured_content
+                        and "result"
+                        in mcp_result.structured_content
+                    ):
+
+                        result_value = (
+                            mcp_result
+                            .structured_content["result"]
+                        )
+
+                    elif mcp_result.content:
+
+                        result_value = (
+                            mcp_result.content[0].text
+                        )
+
+                    else:
+
+                        result_value = "No result returned"
+
+
+                    print("\nMCP result:")
+                    print(result_value)
+
+
+                    # ------------------------------------------
+                    # PREPARE RESULT FOR CLAUDE
+                    # ------------------------------------------
+
+                    tool_results.append(
+                        {
+                            "type": "tool_result",
+                            "tool_use_id": block.id,
+                            "content": str(result_value)
+                        }
+                    )
+
+
+                # ----------------------------------------------
+                # STORE TOOL OBSERVATIONS
+                # ----------------------------------------------
+
+                messages.append(
+                    {
+                        "role": "user",
+                        "content": tool_results
+                    }
+                )
+
+
+            # --------------------------------------------------
+            # SECOND CLAUDE DECISION
+            # --------------------------------------------------
+
+            second_response = claude.messages.create(
+                model=MODEL_NAME,
+                max_tokens=500,
+                tools=claude_tools,
+                messages=messages
+            )
+
+
+            print("\nClaude second stop reason:")
+            print(second_response.stop_reason)
+
+            print("\nClaude second response:")
+            print(second_response.content)
 
 
 if __name__ == "__main__":
