@@ -46,6 +46,17 @@ async def main():
                 print("MIME Type:")
                 print(resource.mime_type)
 
+            # ----------------------------------------------
+            # READ MCP RESOURCE
+            # ----------------------------------------------
+
+            resource_result = await session.read_resource(
+                "test-environment://qa"
+            )
+
+            print("\nResource read result:")
+            print(resource_result)
+
 
 if __name__ == "__main__":
     asyncio.run(main())
