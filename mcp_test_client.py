@@ -54,6 +54,16 @@ async def main():
             for tool in tools_result.tools:
                 print(tool.name)
 
+            result = await session.call_tool(
+                "get_test_status",
+                {
+                    "test_case_id": "TC-102"
+                }
+            )
+
+            print("\nTool call result:")
+            print(result)
+
 
 if __name__ == "__main__":
     asyncio.run(main())
