@@ -44,57 +44,99 @@ tools = [
     {
         "name": "get_test_status",
         "description": (
-            "Get the current execution status of a test case. "
-            "Use this when the user wants to know whether "
-            "a test case passed, failed, or is still in progress."
+            "Get the current execution status of one or more test cases. "
+            "Use this when the user wants to know whether test cases "
+            "passed, failed, or are still in progress."
         ),
         "input_schema": {
             "type": "object",
             "properties": {
-                "test_case_id": {
-                    "type": "string",
+                "test_case_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
                     "description": (
-                        "The test case ID, for example TC-102."
+                        "One or more test case IDs, "
+                        "for example TC-101, TC-102."
                     )
                 }
             },
-            "required": ["test_case_id"]
+            "required": ["test_case_ids"]
         }
     },
 
     {
         "name": "get_failure_log",
         "description": (
-            "Get the failure or exception log for a failed test case. "
-            "Use this when the user wants to understand why "
-            "a test case failed."
+            "Get the failure or exception log for one or more failed "
+            "test cases. Use this when the user wants to understand "
+            "why test cases failed."
         ),
         "input_schema": {
             "type": "object",
             "properties": {
-                "test_case_id": {
-                    "type": "string",
+                "test_case_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
                     "description": (
-                        "The failed test case ID, for example TC-102."
+                        "One or more test case IDs, "
+                        "for example TC-102."
                     )
                 }
             },
-            "required": ["test_case_id"]
+            "required": ["test_case_ids"]
         }
     }
 ]
 
 
 # --------------------------------------------------
-# Conversation history
+# Helper function that executes whichever tool
+# Claude requested
+# --------------------------------------------------
+
+def execute_tool(tool_name, tool_input):
+
+    test_case_ids = tool_input["test_case_ids"]
+
+    results = {}
+
+    for test_case_id in test_case_ids:
+
+        if tool_name == "get_test_status":
+
+            results[test_case_id] = get_test_status(
+                test_case_id
+            )
+
+        elif tool_name == "get_failure_log":
+
+            results[test_case_id] = get_failure_log(
+                test_case_id
+            )
+
+        else:
+
+            results[test_case_id] = (
+                "Unknown tool requested"
+            )
+
+    return results
+
+
+# --------------------------------------------------
+# Conversation
 # --------------------------------------------------
 
 messages = [
     {
         "role": "user",
         "content": (
-            "Tell me the current status of TC-102. "
-            "If it failed, explain why it failed."
+            "Tell me the status of TC-101 and TC-102, "
+            "and explain why any failed test failed."
         )
     }
 ]
@@ -108,7 +150,7 @@ while True:
 
     response = client.messages.create(
         model="claude-haiku-4-5-20251001",
-        max_tokens=400,
+        max_tokens=500,
         tools=tools,
         messages=messages
     )
@@ -120,9 +162,8 @@ while True:
     print("\nClaude response content:")
     print(response.content)
 
-
     # --------------------------------------------------
-    # Preserve Claude's response in conversation history
+    # Store Claude's complete response in history
     # --------------------------------------------------
 
     messages.append(
@@ -132,9 +173,8 @@ while True:
         }
     )
 
-
     # --------------------------------------------------
-    # Claude has finished
+    # If Claude is finished, print final text and stop
     # --------------------------------------------------
 
     if response.stop_reason == "end_turn":
@@ -148,7 +188,6 @@ while True:
 
         break
 
-
     # --------------------------------------------------
     # Claude wants one or more tools
     # --------------------------------------------------
@@ -159,51 +198,42 @@ while True:
 
         for content_block in response.content:
 
-            if content_block.type != "tool_use":
-                continue
+            if content_block.type == "tool_use":
 
-            print("\nSelected tool:")
-            print(content_block.name)
+                print("\nSelected tool:")
+                print(content_block.name)
 
-            print("\nGenerated input:")
-            print(content_block.input)
+                print("\nGenerated input:")
+                print(content_block.input)
 
-            test_case_id = (
-                content_block.input["test_case_id"]
-            )
+                # --------------------------------------
+                # Execute selected tool dynamically
+                # --------------------------------------
 
-
-            if content_block.name == "get_test_status":
-
-                tool_result = get_test_status(
-                    test_case_id
+                tool_result = execute_tool(
+                    content_block.name,
+                    content_block.input
                 )
 
+                print("\nTool result:")
+                print(tool_result)
 
-            elif content_block.name == "get_failure_log":
+                # --------------------------------------
+                # Prepare result for this specific
+                # tool request
+                # --------------------------------------
 
-                tool_result = get_failure_log(
-                    test_case_id
+                tool_results.append(
+                    {
+                        "type": "tool_result",
+                        "tool_use_id": content_block.id,
+                        "content": str(tool_result)
+                    }
                 )
 
-
-            else:
-
-                tool_result = "Unknown tool requested"
-
-
-            print("\nTool result:")
-            print(tool_result)
-
-
-            tool_results.append(
-                {
-                    "type": "tool_result",
-                    "tool_use_id": content_block.id,
-                    "content": str(tool_result)
-                }
-            )
-
+        # --------------------------------------------------
+        # Send ALL tool results back to Claude
+        # --------------------------------------------------
 
         messages.append(
             {
@@ -212,10 +242,11 @@ while True:
             }
         )
 
+        # Go back to top of while loop.
+        # Claude receives the results and decides
+        # whether it needs another tool or can finish.
 
-        # Start the next Claude decision cycle
         continue
-
 
     # --------------------------------------------------
     # Unexpected stop reason

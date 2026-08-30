@@ -2,11 +2,6 @@ from anthropic import Anthropic
 
 client = Anthropic()
 
-
-# --------------------------------------------------
-# SYSTEM PROMPT
-# --------------------------------------------------
-
 SYSTEM_PROMPT = """
 You are an AI Test Failure Investigator.
 
@@ -62,7 +57,6 @@ def get_failure_log(test_case_id):
         "No failure log found"
     )
 
-
 def get_test_owner(test_case_id):
 
     owner_data = {
@@ -85,98 +79,107 @@ tools = [
     {
         "name": "get_test_status",
         "description": (
-            "Get the execution status of a test case. "
-            "Use this when you need to know whether "
-            "a test passed, failed, or is still in progress."
+            "Get the execution status of one or more test cases. "
+            "Use this when you need to know whether a test passed, "
+            "failed, or is still in progress."
         ),
         "input_schema": {
             "type": "object",
             "properties": {
-                "test_case_id": {
-                    "type": "string"
+                "test_case_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             },
-            "required": [
-                "test_case_id"
-            ]
+            "required": ["test_case_ids"]
         }
     },
 
     {
         "name": "get_failure_log",
         "description": (
-            "Get the failure log for a failed test case. "
-            "Use this when you need to understand why "
-            "a test failed."
+            "Get the failure log for one or more failed test cases. "
+            "Use this when you need to understand why a test failed."
         ),
         "input_schema": {
             "type": "object",
             "properties": {
-                "test_case_id": {
-                    "type": "string"
+                "test_case_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             },
-            "required": [
-                "test_case_id"
-            ]
+            "required": ["test_case_ids"]
         }
     },
 
     {
-        "name": "get_test_owner",
-        "description": (
-            "Get the owner responsible for a test case. "
-            "Use this when you need to know who owns "
-            "or maintains a test case."
-        ),
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "test_case_id": {
+    "name": "get_test_owner",
+    "description": (
+        "Get the owner responsible for one or more test cases. "
+        "Use this when the user wants to know who owns or maintains "
+        "a test case."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "test_case_ids": {
+                "type": "array",
+                "items": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "test_case_id"
-            ]
-        }
+            }
+        },
+        "required": ["test_case_ids"]
     }
+}
+
 ]
 
 
 # --------------------------------------------------
-# REUSABLE TOOL EXECUTION
+# EXECUTE TOOL
 # --------------------------------------------------
 
 def execute_tool(tool_name, tool_input):
 
     try:
 
-        test_case_id = tool_input["test_case_id"]
+        test_case_ids = tool_input["test_case_ids"]
 
-        if tool_name == "get_test_status":
+        results = {}
 
-            return get_test_status(
-                test_case_id
-            )
+        for test_case_id in test_case_ids:
 
-        elif tool_name == "get_failure_log":
+            if tool_name == "get_test_status":
 
-            return get_failure_log(
-                test_case_id
-            )
+                results[test_case_id] = get_test_status(
+                    test_case_id
+                )
 
-        elif tool_name == "get_test_owner":
+            elif tool_name == "get_failure_log":
 
-            return get_test_owner(
-                test_case_id
-            )
+                results[test_case_id] = get_failure_log(
+                    test_case_id
+                )
 
-        else:
+            elif tool_name == "get_test_owner":
 
-            return {
-                "error": f"Unknown tool: {tool_name}"
-            }
+                results[test_case_id] = get_test_owner(
+                    test_case_id
+                )
+
+            else:
+
+                return {
+                    "error": f"Unknown tool: {tool_name}"
+                }
+
+        return results
 
     except KeyError as e:
 
@@ -217,16 +220,11 @@ messages = [
 
 
 # --------------------------------------------------
-# AGENT GUARDRAIL
+# MANUAL AGENT LOOP
 # --------------------------------------------------
 
 MAX_ITERATIONS = 5
 iteration = 0
-
-
-# --------------------------------------------------
-# MANUAL AGENT LOOP
-# --------------------------------------------------
 
 while iteration < MAX_ITERATIONS:
 
@@ -237,19 +235,17 @@ while iteration < MAX_ITERATIONS:
         f"{iteration}/{MAX_ITERATIONS}"
     )
 
-
-    # --------------------------------------------------
+    # ----------------------------------------------
     # DECIDE
-    # --------------------------------------------------
+    # ----------------------------------------------
 
     response = client.messages.create(
-        model="claude-haiku-4-5-20251001",
-        max_tokens=700,
-        system=SYSTEM_PROMPT,
-        tools=tools,
-        messages=messages
+    model="claude-haiku-4-5-20251001",
+    max_tokens=700,
+    system=SYSTEM_PROMPT,
+    tools=tools,
+    messages=messages
     )
-
 
     print("\n==================================")
     print("Agent stop reason:")
@@ -258,9 +254,7 @@ while iteration < MAX_ITERATIONS:
     print("\nAgent response:")
     print(response.content)
 
-
-    # Store Claude's decision in agent state
-
+    # Store Claude's decision in state
     messages.append(
         {
             "role": "assistant",
@@ -268,10 +262,9 @@ while iteration < MAX_ITERATIONS:
         }
     )
 
-
-    # --------------------------------------------------
+    # ----------------------------------------------
     # STOP
-    # --------------------------------------------------
+    # ----------------------------------------------
 
     if response.stop_reason == "end_turn":
 
@@ -284,10 +277,9 @@ while iteration < MAX_ITERATIONS:
 
         break
 
-
-    # --------------------------------------------------
+    # ----------------------------------------------
     # ACT
-    # --------------------------------------------------
+    # ----------------------------------------------
 
     if response.stop_reason == "tool_use":
 
@@ -295,44 +287,35 @@ while iteration < MAX_ITERATIONS:
 
         for content_block in response.content:
 
-            if content_block.type != "tool_use":
-                continue
+            if content_block.type == "tool_use":
 
+                print("\nAgent decided to use tool:")
+                print(content_block.name)
 
-            print("\nAgent decided to use tool:")
-            print(content_block.name)
+                print("\nTool input:")
+                print(content_block.input)
 
-            print("\nTool input:")
-            print(content_block.input)
+                tool_result = execute_tool(
+                    content_block.name,
+                    content_block.input
+                )
 
+                print("\nObservation from tool:")
+                print(tool_result)
 
-            tool_result = execute_tool(
-                content_block.name,
-                content_block.input
-            )
+                # ----------------------------------
+                # OBSERVE
+                # ----------------------------------
 
+                tool_results.append(
+                    {
+                        "type": "tool_result",
+                        "tool_use_id": content_block.id,
+                        "content": str(tool_result)
+                    }
+                )
 
-            # --------------------------------------------------
-            # OBSERVE
-            # --------------------------------------------------
-
-            print("\nObservation from tool:")
-            print(tool_result)
-
-
-            tool_results.append(
-                {
-                    "type": "tool_result",
-                    "tool_use_id": content_block.id,
-                    "content": str(tool_result)
-                }
-            )
-
-
-        # --------------------------------------------------
-        # UPDATE STATE
-        # --------------------------------------------------
-
+        # Store observations in state
         messages.append(
             {
                 "role": "user",
@@ -340,10 +323,8 @@ while iteration < MAX_ITERATIONS:
             }
         )
 
-
-        # Agent decides again
+        # Agent will decide again
         continue
-
 
     print(
         "\nAgent stopped unexpectedly:",
@@ -351,8 +332,6 @@ while iteration < MAX_ITERATIONS:
     )
 
     break
-
-
 else:
 
     print(

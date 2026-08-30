@@ -1,16 +1,5 @@
 from mcp.server import MCPServer
-
-
-# --------------------------------------------------
-# CREATE MCP SERVER
-# --------------------------------------------------
-
 mcp = MCPServer("Testing MCP Server")
-
-
-# --------------------------------------------------
-# MCP TOOL 1
-# --------------------------------------------------
 
 @mcp.tool()
 def get_test_status(test_case_id: str) -> str:
@@ -18,21 +7,13 @@ def get_test_status(test_case_id: str) -> str:
     Get the current execution status of a test case.
     """
 
-    test_data = {
+    test_data={
         "TC-101": "Passed",
         "TC-102": "Failed",
         "TC-103": "In Progress"
     }
 
-    return test_data.get(
-        test_case_id,
-        "Test case not found"
-    )
-
-
-# --------------------------------------------------
-# MCP TOOL 2
-# --------------------------------------------------
+    return test_data.get(test_case_id, "Test case not found")
 
 @mcp.tool()
 def get_failure_log(test_case_id: str) -> str:
@@ -54,10 +35,6 @@ def get_failure_log(test_case_id: str) -> str:
         "Failure log not found"
     )
 
-
-# --------------------------------------------------
-# MCP TOOL 3
-# --------------------------------------------------
 
 @mcp.tool()
 def get_test_owner(test_case_id: str) -> str:
