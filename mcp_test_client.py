@@ -12,16 +12,71 @@ MAX_TOKENS = 700
 MAX_ITERATIONS = 5
 
 
+# --------------------------------------------------
+# SYSTEM PROMPT
+# --------------------------------------------------
+
+SYSTEM_PROMPT = """
+You are an AI Test Failure Investigator.
+
+Your job is to investigate automated test failures
+using only the available tools.
+
+Rules:
+- Use tool results as factual evidence.
+- Clearly separate observed facts from possible causes.
+- Do not present assumptions as confirmed facts.
+- Only request tools when they are useful.
+- Avoid repeating the same tool call with the same
+  arguments unless there is a valid reason.
+- When enough evidence is available, stop using tools
+  and provide the final report.
+
+Final report must contain:
+1. Test case
+2. Status
+3. Owner
+4. Observed failure evidence
+5. Likely root cause
+6. Confidence
+7. Recommended next action
+"""
+
+
 async def main():
+
+    # --------------------------------------------------
+    # MCP SERVER CONFIGURATION
+    # --------------------------------------------------
 
     server_params = StdioServerParameters(
         command="mcp",
         args=["run", "mcp_test_server.py"]
     )
 
-    async with stdio_client(server_params) as (read, write):
 
-        async with ClientSession(read, write) as session:
+    # --------------------------------------------------
+    # STDIO TRANSPORT
+    # --------------------------------------------------
+
+    async with stdio_client(
+        server_params
+    ) as (read, write):
+
+
+        # --------------------------------------------------
+        # MCP CLIENT SESSION
+        # --------------------------------------------------
+
+        async with ClientSession(
+            read,
+            write
+        ) as session:
+
+
+            # --------------------------------------------------
+            # INITIALIZE MCP
+            # --------------------------------------------------
 
             await session.initialize()
 
@@ -57,7 +112,7 @@ async def main():
 
 
             # --------------------------------------------------
-            # AGENT GOAL / STATE
+            # AGENT GOAL / INITIAL STATE
             # --------------------------------------------------
 
             messages = [
@@ -74,10 +129,16 @@ async def main():
 
 
             # --------------------------------------------------
-            # GUARDED AGENT LOOP
+            # AGENT CONTROL STATE
             # --------------------------------------------------
 
             iteration = 0
+            executed_calls = set()
+
+
+            # --------------------------------------------------
+            # GUARDED MCP-POWERED AGENT LOOP
+            # --------------------------------------------------
 
             while iteration < MAX_ITERATIONS:
 
@@ -96,13 +157,10 @@ async def main():
                 response = claude.messages.create(
                     model=MODEL_NAME,
                     max_tokens=MAX_TOKENS,
+                    system=SYSTEM_PROMPT,
                     tools=claude_tools,
                     messages=messages
                 )
-
-
-                print("Stop reason:")
-                print(response.stop_reason)
 
 
                 # ----------------------------------------------
@@ -117,8 +175,12 @@ async def main():
                 )
 
 
+                print("Stop reason:")
+                print(response.stop_reason)
+
+
                 # ----------------------------------------------
-                # FINAL ANSWER
+                # CLAUDE FINISHED
                 # ----------------------------------------------
 
                 if response.stop_reason == "end_turn":
@@ -134,7 +196,7 @@ async def main():
 
 
                 # ----------------------------------------------
-                # CLAUDE REQUESTED MCP TOOLS
+                # CLAUDE REQUESTED TOOLS
                 # ----------------------------------------------
 
                 if response.stop_reason == "tool_use":
@@ -143,6 +205,11 @@ async def main():
 
 
                     for block in response.content:
+
+
+                        # --------------------------------------
+                        # IGNORE NON-TOOL BLOCKS
+                        # --------------------------------------
 
                         if block.type != "tool_use":
                             continue
@@ -159,41 +226,113 @@ async def main():
 
 
                         # --------------------------------------
-                        # INVOKE MCP TOOL DYNAMICALLY
+                        # CREATE DUPLICATE-CALL KEY
                         # --------------------------------------
 
-                        mcp_result = await session.call_tool(
+                        call_key = (
                             block.name,
-                            block.input
+                            str(block.input)
                         )
 
 
                         # --------------------------------------
-                        # EXTRACT TOOL RESULT
+                        # DUPLICATE-CALL GUARD
                         # --------------------------------------
 
-                        if (
-                            mcp_result.structured_content
-                            and "result"
-                            in mcp_result.structured_content
-                        ):
+                        if call_key in executed_calls:
 
                             result_value = (
-                                mcp_result
-                                .structured_content["result"]
+                                f"Repeated tool call blocked: "
+                                f"{block.name} "
+                                f"with {block.input}"
                             )
 
-                        elif mcp_result.content:
-
-                            result_value = (
-                                mcp_result.content[0].text
-                            )
 
                         else:
 
-                            result_value = (
-                                "No result returned"
+                            executed_calls.add(
+                                call_key
                             )
+
+
+                            # ----------------------------------
+                            # MCP EXECUTION SAFETY BOUNDARY
+                            # ----------------------------------
+
+                            try:
+
+                                mcp_result = (
+                                    await session.call_tool(
+                                        block.name,
+                                        block.input
+                                    )
+                                )
+
+
+                                # ------------------------------
+                                # MCP RETURNED AN ERROR
+                                # ------------------------------
+
+                                if mcp_result.is_error:
+
+                                    result_value = (
+                                        "MCP tool returned "
+                                        "an error"
+                                    )
+
+
+                                # ------------------------------
+                                # PREFERRED STRUCTURED RESULT
+                                # ------------------------------
+
+                                elif (
+                                    mcp_result.structured_content
+                                    and "result"
+                                    in mcp_result.structured_content
+                                ):
+
+                                    result_value = (
+                                        mcp_result
+                                        .structured_content[
+                                            "result"
+                                        ]
+                                    )
+
+
+                                # ------------------------------
+                                # FALLBACK TEXT CONTENT
+                                # ------------------------------
+
+                                elif mcp_result.content:
+
+                                    result_value = (
+                                        mcp_result
+                                        .content[0]
+                                        .text
+                                    )
+
+
+                                # ------------------------------
+                                # EMPTY RESULT
+                                # ------------------------------
+
+                                else:
+
+                                    result_value = (
+                                        "No result returned"
+                                    )
+
+
+                            # ----------------------------------
+                            # PYTHON / RUNTIME FAILURE
+                            # ----------------------------------
+
+                            except Exception as e:
+
+                                result_value = (
+                                    "Tool execution failed: "
+                                    f"{str(e)}"
+                                )
 
 
                         print(
@@ -210,13 +349,15 @@ async def main():
                             {
                                 "type": "tool_result",
                                 "tool_use_id": block.id,
-                                "content": str(result_value)
+                                "content": str(
+                                    result_value
+                                )
                             }
                         )
 
 
                     # ------------------------------------------
-                    # UPDATE AGENT STATE WITH OBSERVATIONS
+                    # UPDATE AGENT STATE
                     # ------------------------------------------
 
                     messages.append(
@@ -228,7 +369,7 @@ async def main():
 
 
                     # ------------------------------------------
-                    # GO TO NEXT AGENT DECISION
+                    # NEXT CLAUDE DECISION
                     # ------------------------------------------
 
                     continue
@@ -240,23 +381,27 @@ async def main():
 
                 print(
                     "\nAgent stopped because an "
-                    "unexpected stop reason was returned:"
+                    "unexpected stop reason "
+                    "was returned:"
                 )
 
-                print(response.stop_reason)
+                print(
+                    response.stop_reason
+                )
 
                 break
 
 
             # --------------------------------------------------
-            # MAX ITERATION LIMIT REACHED
+            # MAX ITERATIONS EXHAUSTED
             # --------------------------------------------------
 
             else:
 
                 print(
-                    "\nAgent stopped because the maximum "
-                    "iteration limit was reached."
+                    "\nAgent stopped because the "
+                    "maximum iteration limit "
+                    "was reached."
                 )
 
 
