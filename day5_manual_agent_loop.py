@@ -57,22 +57,18 @@ def get_test_owner(test_case_id):
 tools = [
     {
         "name": "get_test_status",
-
         "description": (
             "Get the execution status of a test case. "
             "Use this when you need to know whether "
             "a test passed, failed, or is still in progress."
         ),
-
         "input_schema": {
             "type": "object",
-
             "properties": {
                 "test_case_id": {
                     "type": "string"
                 }
             },
-
             "required": [
                 "test_case_id"
             ]
@@ -81,22 +77,18 @@ tools = [
 
     {
         "name": "get_failure_log",
-
         "description": (
             "Get the failure log for a failed test case. "
             "Use this when you need to understand why "
             "a test failed."
         ),
-
         "input_schema": {
             "type": "object",
-
             "properties": {
                 "test_case_id": {
                     "type": "string"
                 }
             },
-
             "required": [
                 "test_case_id"
             ]
@@ -105,22 +97,18 @@ tools = [
 
     {
         "name": "get_test_owner",
-
         "description": (
             "Get the owner responsible for a test case. "
             "Use this when you need to know who owns "
             "or maintains a test case."
         ),
-
         "input_schema": {
             "type": "object",
-
             "properties": {
                 "test_case_id": {
                     "type": "string"
                 }
             },
-
             "required": [
                 "test_case_id"
             ]
@@ -154,10 +142,25 @@ messages = [
 
 
 # --------------------------------------------------
+# AGENT GUARDRAIL
+# --------------------------------------------------
+
+MAX_ITERATIONS = 5
+iteration = 0
+
+
+# --------------------------------------------------
 # MANUAL AGENT LOOP
 # --------------------------------------------------
 
-while True:
+while iteration < MAX_ITERATIONS:
+
+    iteration += 1
+
+    print(
+        f"\nAgent iteration: "
+        f"{iteration}/{MAX_ITERATIONS}"
+    )
 
     print("\n==================================")
 
@@ -180,8 +183,6 @@ while True:
     print("\nAgent response:")
     print(response.content)
 
-
-    # Store Claude's decision in agent state
 
     messages.append(
         {
@@ -288,7 +289,7 @@ while True:
         )
 
 
-        # Agent decides again using updated state
+        # Agent decides again
         continue
 
 
@@ -298,3 +299,15 @@ while True:
     )
 
     break
+
+
+# --------------------------------------------------
+# LOOP EXHAUSTED
+# --------------------------------------------------
+
+else:
+
+    print(
+        "\nAgent stopped because the maximum "
+        "iteration limit was reached."
+    )
