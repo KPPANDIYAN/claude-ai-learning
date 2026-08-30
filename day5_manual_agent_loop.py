@@ -118,6 +118,53 @@ tools = [
 
 
 # --------------------------------------------------
+# REUSABLE TOOL EXECUTION
+# --------------------------------------------------
+
+def execute_tool(tool_name, tool_input):
+
+    try:
+
+        test_case_id = tool_input["test_case_id"]
+
+        if tool_name == "get_test_status":
+
+            return get_test_status(
+                test_case_id
+            )
+
+        elif tool_name == "get_failure_log":
+
+            return get_failure_log(
+                test_case_id
+            )
+
+        elif tool_name == "get_test_owner":
+
+            return get_test_owner(
+                test_case_id
+            )
+
+        else:
+
+            return {
+                "error": f"Unknown tool: {tool_name}"
+            }
+
+    except KeyError as e:
+
+        return {
+            "error": f"Missing required input: {e}"
+        }
+
+    except Exception as e:
+
+        return {
+            "error": f"Tool execution failed: {str(e)}"
+        }
+
+
+# --------------------------------------------------
 # AGENT GOAL
 # --------------------------------------------------
 
@@ -229,35 +276,10 @@ while iteration < MAX_ITERATIONS:
             print(content_block.input)
 
 
-            test_case_id = (
-                content_block.input["test_case_id"]
+            tool_result = execute_tool(
+                content_block.name,
+                content_block.input
             )
-
-
-            if content_block.name == "get_test_status":
-
-                tool_result = get_test_status(
-                    test_case_id
-                )
-
-
-            elif content_block.name == "get_failure_log":
-
-                tool_result = get_failure_log(
-                    test_case_id
-                )
-
-
-            elif content_block.name == "get_test_owner":
-
-                tool_result = get_test_owner(
-                    test_case_id
-                )
-
-
-            else:
-
-                tool_result = "Unknown tool requested"
 
 
             # --------------------------------------------------
@@ -289,7 +311,6 @@ while iteration < MAX_ITERATIONS:
         )
 
 
-        # Agent decides again
         continue
 
 
@@ -300,10 +321,6 @@ while iteration < MAX_ITERATIONS:
 
     break
 
-
-# --------------------------------------------------
-# LOOP EXHAUSTED
-# --------------------------------------------------
 
 else:
 
