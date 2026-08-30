@@ -83,3 +83,33 @@ print(response.stop_reason)
 
 print("\nClaude response content:")
 print(response.content)
+
+
+# --------------------------------------------------
+# Execute the tool Claude requested
+# --------------------------------------------------
+
+if response.stop_reason == "tool_use":
+
+    for content_block in response.content:
+
+        if content_block.type == "tool_use":
+
+            print("\nSelected tool:")
+            print(content_block.name)
+
+            print("\nGenerated input:")
+            print(content_block.input)
+
+            if content_block.name == "get_test_status":
+
+                test_case_id = (
+                    content_block.input["test_case_id"]
+                )
+
+                tool_result = get_test_status(
+                    test_case_id
+                )
+
+                print("\nTool result:")
+                print(tool_result)
