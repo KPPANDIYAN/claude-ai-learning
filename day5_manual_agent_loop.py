@@ -36,6 +36,20 @@ def get_failure_log(test_case_id):
     )
 
 
+def get_test_owner(test_case_id):
+
+    owner_data = {
+        "TC-101": "Anita",
+        "TC-102": "Ravi",
+        "TC-103": "Kumar"
+    }
+
+    return owner_data.get(
+        test_case_id,
+        "Owner not found"
+    )
+
+
 # --------------------------------------------------
 # TOOL DEFINITIONS FOR CLAUDE
 # --------------------------------------------------
@@ -87,6 +101,30 @@ tools = [
                 "test_case_id"
             ]
         }
+    },
+
+    {
+        "name": "get_test_owner",
+
+        "description": (
+            "Get the owner responsible for a test case. "
+            "Use this when you need to know who owns "
+            "or maintains a test case."
+        ),
+
+        "input_schema": {
+            "type": "object",
+
+            "properties": {
+                "test_case_id": {
+                    "type": "string"
+                }
+            },
+
+            "required": [
+                "test_case_id"
+            ]
+        }
     }
 ]
 
@@ -97,7 +135,7 @@ tools = [
 
 goal = (
     "Investigate test case TC-102. "
-    "Determine its current status. "
+    "Determine its current status and owner. "
     "If it failed, retrieve the failure evidence "
     "and explain the likely cause."
 )
@@ -205,6 +243,13 @@ while True:
             elif content_block.name == "get_failure_log":
 
                 tool_result = get_failure_log(
+                    test_case_id
+                )
+
+
+            elif content_block.name == "get_test_owner":
+
+                tool_result = get_test_owner(
                     test_case_id
                 )
 
