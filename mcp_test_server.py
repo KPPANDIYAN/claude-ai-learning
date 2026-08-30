@@ -52,3 +52,23 @@ def get_test_owner(test_case_id: str) -> str:
         test_case_id,
         "Owner not found"
     )
+
+# --------------------------------------------------
+# MCP RESOURCE 1
+# --------------------------------------------------
+
+@mcp.resource(
+    "test-environment://qa",
+    name="qa_test_environment",
+    description="Read the QA automation test environment configuration.",
+    mime_type="text/plain"
+)
+def get_qa_test_environment() -> str:
+
+    return """
+    Application: SauceDemo
+    Environment: QA
+    Browser: Chrome
+    Automation Framework: Selenium
+    Execution Type: Automated UI Testing
+    """
