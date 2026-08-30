@@ -4,6 +4,33 @@ client = Anthropic()
 
 
 # --------------------------------------------------
+# SYSTEM PROMPT
+# --------------------------------------------------
+
+SYSTEM_PROMPT = """
+You are an AI Test Failure Investigator.
+
+Your job is to investigate automated test failures using the available tools.
+
+Rules:
+- Use tool results as factual evidence.
+- Clearly distinguish observed facts from possible causes.
+- Do not present assumptions as confirmed facts.
+- Only request tools when they are useful for completing the investigation.
+- Once enough information is available, provide the final investigation report.
+
+Final report must contain:
+1. Test case
+2. Status
+3. Owner
+4. Observed failure evidence
+5. Likely root cause
+6. Confidence
+7. Recommended next action
+"""
+
+
+# --------------------------------------------------
 # TOOL IMPLEMENTATIONS
 # --------------------------------------------------
 
@@ -171,8 +198,9 @@ def execute_tool(tool_name, tool_input):
 goal = (
     "Investigate test case TC-102. "
     "Determine its current status and owner. "
-    "If it failed, retrieve the failure evidence "
-    "and explain the likely cause."
+    "If it failed, retrieve the failure evidence. "
+    "Analyze the likely root cause based only on the available evidence. "
+    "Provide a confidence level and recommend the next action."
 )
 
 
@@ -209,8 +237,6 @@ while iteration < MAX_ITERATIONS:
         f"{iteration}/{MAX_ITERATIONS}"
     )
 
-    print("\n==================================")
-
 
     # --------------------------------------------------
     # DECIDE
@@ -218,18 +244,22 @@ while iteration < MAX_ITERATIONS:
 
     response = client.messages.create(
         model="claude-haiku-4-5-20251001",
-        max_tokens=500,
+        max_tokens=700,
+        system=SYSTEM_PROMPT,
         tools=tools,
         messages=messages
     )
 
 
+    print("\n==================================")
     print("Agent stop reason:")
     print(response.stop_reason)
 
     print("\nAgent response:")
     print(response.content)
 
+
+    # Store Claude's decision in agent state
 
     messages.append(
         {
@@ -283,7 +313,7 @@ while iteration < MAX_ITERATIONS:
 
 
             # --------------------------------------------------
-            # OBSERVATION
+            # OBSERVE
             # --------------------------------------------------
 
             print("\nObservation from tool:")
@@ -300,7 +330,7 @@ while iteration < MAX_ITERATIONS:
 
 
         # --------------------------------------------------
-        # UPDATE AGENT STATE
+        # UPDATE STATE
         # --------------------------------------------------
 
         messages.append(
@@ -311,6 +341,7 @@ while iteration < MAX_ITERATIONS:
         )
 
 
+        # Agent decides again
         continue
 
 
