@@ -56,27 +56,30 @@ tools = [
 
 
 # --------------------------------------------------
-# Ask Claude a question that requires the tool
+# Conversation history
+# --------------------------------------------------
+
+messages = [
+    {
+        "role": "user",
+        "content": (
+            "What is the current status of test case TC-102?"
+        )
+    }
+]
+
+
+# --------------------------------------------------
+# First Claude call
 # --------------------------------------------------
 
 response = client.messages.create(
     model="claude-haiku-4-5-20251001",
     max_tokens=300,
     tools=tools,
-    messages=[
-        {
-            "role": "user",
-            "content": (
-                "What is the current status of test case TC-102?"
-            )
-        }
-    ]
+    messages=messages
 )
 
-
-# --------------------------------------------------
-# Inspect Claude's decision
-# --------------------------------------------------
 
 print("Claude stop reason:")
 print(response.stop_reason)
@@ -86,7 +89,19 @@ print(response.content)
 
 
 # --------------------------------------------------
-# Execute the tool Claude requested
+# Store Claude's tool request in conversation history
+# --------------------------------------------------
+
+messages.append(
+    {
+        "role": "assistant",
+        "content": response.content
+    }
+)
+
+
+# --------------------------------------------------
+# Execute requested tool
 # --------------------------------------------------
 
 if response.stop_reason == "tool_use":
@@ -113,3 +128,44 @@ if response.stop_reason == "tool_use":
 
                 print("\nTool result:")
                 print(tool_result)
+
+
+                # --------------------------------------
+                # Add tool result to conversation
+                # --------------------------------------
+
+                messages.append(
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "tool_result",
+                                "tool_use_id": content_block.id,
+                                "content": str(tool_result)
+                            }
+                        ]
+                    }
+                )
+
+
+# --------------------------------------------------
+# Second Claude call
+# --------------------------------------------------
+
+second_response = client.messages.create(
+    model="claude-haiku-4-5-20251001",
+    max_tokens=300,
+    tools=tools,
+    messages=messages
+)
+
+
+print("\nClaude second stop reason:")
+print(second_response.stop_reason)
+
+print("\nClaude final answer:")
+
+for content_block in second_response.content:
+
+    if content_block.type == "text":
+        print(content_block.text)
