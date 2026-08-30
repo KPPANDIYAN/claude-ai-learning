@@ -4,7 +4,7 @@ client = Anthropic()
 
 
 # --------------------------------------------------
-# Actual Python tool
+# Actual Python tools
 # --------------------------------------------------
 
 def get_test_status(test_case_id):
@@ -21,8 +21,23 @@ def get_test_status(test_case_id):
     )
 
 
+def get_failure_log(test_case_id):
+
+    failure_logs = {
+        "TC-102": (
+            "NoSuchElementException: "
+            "Unable to locate element with id 'login-button'"
+        )
+    }
+
+    return failure_logs.get(
+        test_case_id,
+        "No failure log found"
+    )
+
+
 # --------------------------------------------------
-# Tool definition shown to Claude
+# Tool definitions shown to Claude
 # --------------------------------------------------
 
 tools = [
@@ -51,6 +66,33 @@ tools = [
                 "test_case_id"
             ]
         }
+    },
+
+    {
+        "name": "get_failure_log",
+
+        "description": (
+            "Get the failure or exception log for a failed test case. "
+            "Use this when the user wants to understand why "
+            "a test case failed."
+        ),
+
+        "input_schema": {
+            "type": "object",
+
+            "properties": {
+                "test_case_id": {
+                    "type": "string",
+                    "description": (
+                        "The failed test case ID, for example TC-102."
+                    )
+                }
+            },
+
+            "required": [
+                "test_case_id"
+            ]
+        }
     }
 ]
 
@@ -63,7 +105,8 @@ messages = [
     {
         "role": "user",
         "content": (
-            "What is the current status of test case TC-102?"
+            "Tell me the current status of TC-102. "
+            "If it failed, explain why it failed."
         )
     }
 ]
@@ -75,7 +118,7 @@ messages = [
 
 response = client.messages.create(
     model="claude-haiku-4-5-20251001",
-    max_tokens=300,
+    max_tokens=400,
     tools=tools,
     messages=messages
 )
@@ -89,7 +132,7 @@ print(response.content)
 
 
 # --------------------------------------------------
-# Store Claude's tool request in conversation history
+# Store Claude's complete response
 # --------------------------------------------------
 
 messages.append(
@@ -101,71 +144,85 @@ messages.append(
 
 
 # --------------------------------------------------
-# Execute requested tool
+# Execute all tool requests in this response
 # --------------------------------------------------
 
 if response.stop_reason == "tool_use":
 
+    tool_results = []
+
     for content_block in response.content:
 
-        if content_block.type == "tool_use":
+        if content_block.type != "tool_use":
+            continue
 
-            print("\nSelected tool:")
-            print(content_block.name)
+        print("\nSelected tool:")
+        print(content_block.name)
 
-            print("\nGenerated input:")
-            print(content_block.input)
+        print("\nGenerated input:")
+        print(content_block.input)
 
-            if content_block.name == "get_test_status":
-
-                test_case_id = (
-                    content_block.input["test_case_id"]
-                )
-
-                tool_result = get_test_status(
-                    test_case_id
-                )
-
-                print("\nTool result:")
-                print(tool_result)
+        test_case_id = (
+            content_block.input["test_case_id"]
+        )
 
 
-                # --------------------------------------
-                # Add tool result to conversation
-                # --------------------------------------
+        if content_block.name == "get_test_status":
 
-                messages.append(
-                    {
-                        "role": "user",
-                        "content": [
-                            {
-                                "type": "tool_result",
-                                "tool_use_id": content_block.id,
-                                "content": str(tool_result)
-                            }
-                        ]
-                    }
-                )
+            tool_result = get_test_status(
+                test_case_id
+            )
+
+
+        elif content_block.name == "get_failure_log":
+
+            tool_result = get_failure_log(
+                test_case_id
+            )
+
+
+        else:
+
+            tool_result = "Unknown tool requested"
+
+
+        print("\nTool result:")
+        print(tool_result)
+
+
+        tool_results.append(
+            {
+                "type": "tool_result",
+                "tool_use_id": content_block.id,
+                "content": str(tool_result)
+            }
+        )
 
 
 # --------------------------------------------------
-# Second Claude call
+# Send all tool results back to Claude
 # --------------------------------------------------
 
-second_response = client.messages.create(
-    model="claude-haiku-4-5-20251001",
-    max_tokens=300,
-    tools=tools,
-    messages=messages
-)
+if tool_results:
+
+    messages.append(
+        {
+            "role": "user",
+            "content": tool_results
+        }
+    )
 
 
-print("\nClaude second stop reason:")
-print(second_response.stop_reason)
+    second_response = client.messages.create(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=400,
+        tools=tools,
+        messages=messages
+    )
 
-print("\nClaude final answer:")
 
-for content_block in second_response.content:
+    print("\nClaude second stop reason:")
+    print(second_response.stop_reason)
 
-    if content_block.type == "text":
-        print(content_block.text)
+    print("\nClaude second response:")
+    print(second_response.content)
