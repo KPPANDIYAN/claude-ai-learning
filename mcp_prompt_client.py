@@ -59,6 +59,20 @@ async def main():
                 print("Arguments:")
                 print(prompt.arguments)
 
+            # ----------------------------------------------
+            # GET / RENDER MCP PROMPT
+            # ----------------------------------------------
+
+            prompt_result = await session.get_prompt(
+                "investigate_test_failure",
+                arguments={
+                    "test_case_id": "TC-102"
+                }
+            )
+
+            print("\nRendered MCP prompt:")
+            print(prompt_result)
+
 
 if __name__ == "__main__":
     asyncio.run(main())
