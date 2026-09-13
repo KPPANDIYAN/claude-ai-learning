@@ -57,6 +57,42 @@ async def main():
             print("\nResource read result:")
             print(resource_result)
 
+            # ----------------------------------------------
+            # PRINT ACTUAL RESOURCE TEXT
+            # ----------------------------------------------
+
+            if resource_result.contents:
+
+                print("\nActual Resource Content:")
+
+                print(
+                    resource_result.contents[0].text
+                )
+
+            # ----------------------------------------------
+            # DISCOVER MCP RESOURCE TEMPLATES
+            # ----------------------------------------------
+
+            templates_result = (
+                await session.list_resource_templates()
+            )
+
+            print("\nAvailable MCP resource templates:")
+
+            for template in templates_result.resource_templates:
+
+                print("\nName:")
+                print(template.name)
+
+                print("URI Template:")
+                print(template.uri_template)
+
+                print("Description:")
+                print(template.description)
+
+                print("MIME Type:")
+                print(template.mime_type)
+
 
 if __name__ == "__main__":
     asyncio.run(main())
