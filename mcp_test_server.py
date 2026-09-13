@@ -72,3 +72,42 @@ def get_qa_test_environment() -> str:
     Automation Framework: Selenium
     Execution Type: Automated UI Testing
     """
+# --------------------------------------------------
+# MCP RESOURCE TEMPLATE
+# --------------------------------------------------
+
+@mcp.resource(
+    "test-report://{test_case_id}",
+    name="test_report",
+    description="Read the execution report for a test case.",
+    mime_type="text/plain"
+)
+def get_test_report(test_case_id: str) -> str:
+
+    report_data = {
+                "TC-101": """
+        Test Case: TC-101
+        Status: Passed
+        Owner: Anitha
+        Failure Evidence: None
+        """,
+                "TC-102": """
+        Test Case: TC-102
+        Status: Failed
+        Owner: Ravi
+        Failure Evidence:
+        NoSuchElementException:
+        Unable to locate element with id 'login-button'
+        """,
+                "TC-103": """
+        Test Case: TC-103
+        Status: In Progress
+        Owner: Kumar
+        Failure Evidence: Not available yet
+        """
+            }
+
+    return report_data.get(
+        test_case_id,
+        f"No report found for {test_case_id}"
+    )
