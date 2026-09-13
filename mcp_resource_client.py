@@ -93,6 +93,25 @@ async def main():
                 print("MIME Type:")
                 print(template.mime_type)
 
+            # ----------------------------------------------
+            # READ RESOURCE FROM TEMPLATE
+            # ----------------------------------------------
+
+            test_report_result = await session.read_resource(
+                "test-report://TC-102"
+            )
+
+            print("\nTest report resource result:")
+            print(test_report_result)
+
+            if test_report_result.contents:
+
+                print("\nActual Test Report Content:")
+
+                print(
+                    test_report_result.contents[0].text
+                )
+
 
 if __name__ == "__main__":
     asyncio.run(main())
