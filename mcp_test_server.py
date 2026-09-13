@@ -1,5 +1,9 @@
 from mcp.server import MCPServer
 
+from test_management_backend import (
+    get_test_status as backend_get_test_status
+)
+
 
 mcp = MCPServer("Testing MCP Server")
 
@@ -14,16 +18,16 @@ def get_test_status(test_case_id: str) -> str:
     Get the current execution status of a test case.
     """
 
-    test_data = {
-        "TC-101": "Passed",
-        "TC-102": "Failed",
-        "TC-103": "In Progress"
-    }
+    try:
+        return backend_get_test_status(
+            test_case_id
+        )
 
-    return test_data.get(
-        test_case_id,
-        "Test case not found"
-    )
+    except Exception as error:
+        return (
+            "DEBUG_BACKEND_ERROR: "
+            f"{type(error).__name__}: {error}"
+        )
 
 
 # --------------------------------------------------
@@ -153,22 +157,22 @@ def investigate_test_failure(
 ) -> str:
 
     return f"""
-    Investigate automated test case {test_case_id}.
+        Investigate automated test case {test_case_id}.
 
-    Your investigation should determine:
+        Your investigation should determine:
 
-    1. Current test status
-    2. Test owner
-    3. Failure evidence, if the test failed
-    4. Likely root cause
-    5. Confidence in the root-cause assessment
-    6. Recommended next action
+        1. Current test status
+        2. Test owner
+        3. Failure evidence, if the test failed
+        4. Likely root cause
+        5. Confidence in the root-cause assessment
+        6. Recommended next action
 
-    Use available evidence before making conclusions.
+        Use available evidence before making conclusions.
 
-    Clearly distinguish:
-    - observed facts
-    - possible causes
+        Clearly distinguish:
+        - observed facts
+        - possible causes
 
-    Do not present assumptions as confirmed facts.
+        Do not present assumptions as confirmed facts.
     """
