@@ -18,16 +18,9 @@ def get_test_status(test_case_id: str) -> str:
     Get the current execution status of a test case.
     """
 
-    try:
-        return backend_get_test_status(
-            test_case_id
-        )
-
-    except Exception as error:
-        return (
-            "DEBUG_BACKEND_ERROR: "
-            f"{type(error).__name__}: {error}"
-        )
+    return backend_get_test_status(
+        test_case_id
+    )
 
 
 # --------------------------------------------------
@@ -88,14 +81,17 @@ def get_test_owner(test_case_id: str) -> str:
     mime_type="text/plain"
 )
 def get_qa_test_environment() -> str:
+    """
+    Return the QA automation environment configuration.
+    """
 
     return """
-        Application: SauceDemo
-        Environment: QA
-        Browser: Chrome
-        Automation Framework: Selenium
-        Execution Type: Automated UI Testing
-    """
+Application: SauceDemo
+Environment: QA
+Browser: Chrome
+Automation Framework: Selenium
+Execution Type: Automated UI Testing
+""".strip()
 
 
 # --------------------------------------------------
@@ -109,30 +105,33 @@ def get_qa_test_environment() -> str:
     mime_type="text/plain"
 )
 def get_test_report(test_case_id: str) -> str:
+    """
+    Return the execution report for a test case.
+    """
 
     report_data = {
         "TC-101": """
-        Test Case: TC-101
-        Status: Passed
-        Owner: Anitha
-        Failure Evidence: None
-        """,
+Test Case: TC-101
+Status: Passed
+Owner: Anita
+Failure Evidence: None
+""".strip(),
 
         "TC-102": """
-        Test Case: TC-102
-        Status: Failed
-        Owner: Ravi
-        Failure Evidence:
-        NoSuchElementException:
-        Unable to locate element with id 'login-button'
-        """,
+Test Case: TC-102
+Status: Failed
+Owner: Ravi
+Failure Evidence:
+NoSuchElementException:
+Unable to locate element with id 'login-button'
+""".strip(),
 
         "TC-103": """
-        Test Case: TC-103
-        Status: In Progress
-        Owner: Kumar
-        Failure Evidence: Not available yet
-        """
+Test Case: TC-103
+Status: In Progress
+Owner: Kumar
+Failure Evidence: Not available yet
+""".strip()
     }
 
     return report_data.get(
@@ -155,24 +154,27 @@ def get_test_report(test_case_id: str) -> str:
 def investigate_test_failure(
     test_case_id: str
 ) -> str:
+    """
+    Create investigation instructions for a test case.
+    """
 
     return f"""
-        Investigate automated test case {test_case_id}.
+Investigate automated test case {test_case_id}.
 
-        Your investigation should determine:
+Your investigation should determine:
 
-        1. Current test status
-        2. Test owner
-        3. Failure evidence, if the test failed
-        4. Likely root cause
-        5. Confidence in the root-cause assessment
-        6. Recommended next action
+1. Current test status
+2. Test owner
+3. Failure evidence, if the test failed
+4. Likely root cause
+5. Confidence in the root-cause assessment
+6. Recommended next action
 
-        Use available evidence before making conclusions.
+Use available evidence before making conclusions.
 
-        Clearly distinguish:
-        - observed facts
-        - possible causes
+Clearly distinguish:
+- observed facts
+- possible causes
 
-        Do not present assumptions as confirmed facts.
-    """
+Do not present assumptions as confirmed facts.
+""".strip()

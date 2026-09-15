@@ -1,12 +1,29 @@
-import os
+import logging
 import re
 import time
+
+from config import (
+    MAX_RETRIES,
+    RETRY_DELAY_SECONDS,
+    TEST_BACKEND_API_KEY,
+    TEST_BACKEND_SCOPES,
+)
+
+
+# --------------------------------------------------
+# LOGGING
+# --------------------------------------------------
+
+logger = logging.getLogger(__name__)
 
 
 # --------------------------------------------------
 # SIMULATED EXTERNAL TEST MANAGEMENT BACKEND
 # --------------------------------------------------
 
+# This is only a training/demo credential.
+# In a real system, authentication would normally be
+# handled by the external backend or identity provider.
 EXPECTED_API_KEY = "test-backend-demo-key"
 
 TEST_CASE_ID_PATTERN = re.compile(
@@ -14,9 +31,6 @@ TEST_CASE_ID_PATTERN = re.compile(
 )
 
 REQUIRED_STATUS_SCOPE = "read:test_status"
-
-MAX_RETRIES = 3
-RETRY_DELAY_SECONDS = 1
 
 
 # --------------------------------------------------
@@ -53,20 +67,18 @@ class BackendAuthenticationError(Exception):
 
 def authenticate() -> None:
     """
-    Validate that the backend API key exists
-    and matches the expected demo credential.
+    Validate backend authentication.
+
+    The API key is loaded by config.py from
+    the local .env file.
     """
 
-    api_key = os.getenv(
-        "TEST_BACKEND_API_KEY"
-    )
-
-    if not api_key:
+    if not TEST_BACKEND_API_KEY:
         raise BackendAuthenticationError(
             "TEST_BACKEND_API_KEY is not configured"
         )
 
-    if api_key != EXPECTED_API_KEY:
+    if TEST_BACKEND_API_KEY != EXPECTED_API_KEY:
         raise BackendAuthenticationError(
             "Invalid backend API key"
         )
@@ -83,11 +95,8 @@ def authorize(
     Verify that the authenticated backend identity
     has the required permission.
 
-    Example environment value:
-
-    TEST_BACKEND_SCOPES=read:test_status
-
-    Multiple scopes can be comma-separated.
+    Multiple scopes may be configured using
+    comma-separated values.
 
     Example:
 
@@ -95,14 +104,9 @@ def authorize(
     read:test_status,read:test_owner
     """
 
-    configured_scopes = os.getenv(
-        "TEST_BACKEND_SCOPES",
-        ""
-    )
-
     allowed_scopes = {
         scope.strip()
-        for scope in configured_scopes.split(",")
+        for scope in TEST_BACKEND_SCOPES.split(",")
         if scope.strip()
     }
 
@@ -125,7 +129,7 @@ def validate_test_case_id(
     Expected format:
     TC- followed by exactly three digits.
 
-    Examples:
+    Valid examples:
     TC-101
     TC-102
     TC-999
@@ -161,11 +165,12 @@ def execute_with_retry(
     operation
 ):
     """
-    Execute a backend operation and retry only
-    transient backend failures.
+    Execute a backend operation.
 
-    Authentication, authorization and validation
-    failures are intentionally not retried.
+    Only transient backend failures are retried.
+
+    Validation, authentication and authorization
+    failures are not retried.
     """
 
     last_error = None
@@ -182,9 +187,11 @@ def execute_with_retry(
 
             last_error = error
 
-            print(
-                f"Transient backend failure. "
-                f"Attempt {attempt}/{MAX_RETRIES}"
+            logger.warning(
+                "Transient backend failure. "
+                "Attempt %s/%s",
+                attempt,
+                MAX_RETRIES
             )
 
             if attempt == MAX_RETRIES:
@@ -206,13 +213,14 @@ def read_test_status_from_backend(
 ) -> str:
     """
     Simulate reading test status from an external
-    test-management system.
+    test-management backend.
 
-    In a real system this could contain:
-    - REST API call
-    - database query
-    - Jira/TestRail call
-    - TetraScience request
+    In production this method could call:
+    - Jira
+    - TestRail
+    - TetraScience
+    - REST API
+    - Database
     """
 
     test_data = {
@@ -237,13 +245,13 @@ def get_test_status(
     """
     Retrieve test status from the simulated backend.
 
-    Processing order:
+    Processing flow:
 
     1. Validate input
-    2. Authenticate caller
-    3. Authorize required capability
+    2. Authenticate
+    3. Authorize
     4. Execute backend operation
-    5. Retry only transient failures
+    5. Retry transient failures only
     """
 
     validate_test_case_id(
