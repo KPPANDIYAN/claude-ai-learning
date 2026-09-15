@@ -13,6 +13,8 @@ TEST_CASE_ID_PATTERN = re.compile(
     r"^TC-\d{3}$"
 )
 
+REQUIRED_STATUS_SCOPE = "read:test_status"
+
 MAX_RETRIES = 3
 RETRY_DELAY_SECONDS = 1
 
@@ -38,9 +40,9 @@ class BackendTransientError(Exception):
 
 class BackendAuthenticationError(Exception):
     """
-    Represents authentication failures.
+    Represents backend authentication failures.
 
-    These failures should NOT normally be retried.
+    These failures should not normally be retried.
     """
     pass
 
@@ -71,6 +73,46 @@ def authenticate() -> None:
 
 
 # --------------------------------------------------
+# AUTHORIZATION
+# --------------------------------------------------
+
+def authorize(
+    required_scope: str
+) -> None:
+    """
+    Verify that the authenticated backend identity
+    has the required permission.
+
+    Example environment value:
+
+    TEST_BACKEND_SCOPES=read:test_status
+
+    Multiple scopes can be comma-separated.
+
+    Example:
+
+    TEST_BACKEND_SCOPES=
+    read:test_status,read:test_owner
+    """
+
+    configured_scopes = os.getenv(
+        "TEST_BACKEND_SCOPES",
+        ""
+    )
+
+    allowed_scopes = {
+        scope.strip()
+        for scope in configured_scopes.split(",")
+        if scope.strip()
+    }
+
+    if required_scope not in allowed_scopes:
+        raise PermissionError(
+            f"Missing required scope: {required_scope}"
+        )
+
+
+# --------------------------------------------------
 # INPUT VALIDATION
 # --------------------------------------------------
 
@@ -87,8 +129,6 @@ def validate_test_case_id(
     TC-101
     TC-102
     TC-999
-
-    @param test_case_id: Test case identifier to validate.
     """
 
     if not isinstance(
@@ -117,16 +157,15 @@ def validate_test_case_id(
 # RETRY HANDLER
 # --------------------------------------------------
 
-def execute_with_retry(operation):
+def execute_with_retry(
+    operation
+):
     """
     Execute a backend operation and retry only
-    temporary/transient backend failures.
+    transient backend failures.
 
-    Validation and authentication errors are
-    intentionally not retried.
-
-    @param operation: Callable backend operation.
-    @return: Result returned by the backend operation.
+    Authentication, authorization and validation
+    failures are intentionally not retried.
     """
 
     last_error = None
@@ -137,7 +176,6 @@ def execute_with_retry(operation):
     ):
 
         try:
-
             return operation()
 
         except BackendTransientError as error:
@@ -167,17 +205,14 @@ def read_test_status_from_backend(
     test_case_id: str
 ) -> str:
     """
-    Simulate reading test status from an
-    external test-management backend.
+    Simulate reading test status from an external
+    test-management system.
 
-    In a real system, this method could contain:
+    In a real system this could contain:
     - REST API call
     - database query
     - Jira/TestRail call
     - TetraScience request
-
-    @param test_case_id: Test case identifier.
-    @return: Current test execution status.
     """
 
     test_data = {
@@ -205,12 +240,10 @@ def get_test_status(
     Processing order:
 
     1. Validate input
-    2. Authenticate
-    3. Execute backend read
-    4. Retry only transient backend failures
-
-    @param test_case_id: Test case identifier.
-    @return: Current test execution status.
+    2. Authenticate caller
+    3. Authorize required capability
+    4. Execute backend operation
+    5. Retry only transient failures
     """
 
     validate_test_case_id(
@@ -218,6 +251,10 @@ def get_test_status(
     )
 
     authenticate()
+
+    authorize(
+        REQUIRED_STATUS_SCOPE
+    )
 
     def backend_operation():
 
