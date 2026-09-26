@@ -1,0 +1,6 @@
+# Direct dependencies for the Claude/MCP learning project.
+# Requires Python >= 3.10 (tested on 3.13.2).
+
+anthropic>=0.121.0,<1.0      # Claude Messages API client
+mcp[cli]>=2.1.1,<3.0         # MCP SDK v2 (MCPServer) + `mcp run` CLI
+python-dotenv>=1.2.3,<2.0    # loads .env in config.py
