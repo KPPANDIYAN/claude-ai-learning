@@ -29,10 +29,7 @@ load_dotenv()
 # Default: "" (not configured).
 # Currently not imported directly by the Claude client scripts.
 # Anthropic() reads ANTHROPIC_API_KEY from the process environment.
-ANTHROPIC_API_KEY = os.getenv(
-    "ANTHROPIC_API_KEY",
-    ""
-)
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 
 
 # --------------------------------------------------
@@ -45,22 +42,14 @@ ANTHROPIC_API_KEY = os.getenv(
 #   ("TEST_BACKEND_API_KEY is not configured")
 # - Wrong value -> BackendAuthenticationError
 #   ("Invalid backend API key")
-TEST_BACKEND_API_KEY = os.getenv(
-    "TEST_BACKEND_API_KEY",
-    ""
-)
+TEST_BACKEND_API_KEY = os.getenv("TEST_BACKEND_API_KEY", "")
 
 # Permissions granted to the backend identity.
-# Format: comma-separated list; spaces around each
-# scope are ignored.
-# Example: read:test_status,read:test_owner
-# Default: "" (no scopes -> every protected call
-# raises PermissionError).
-# get_test_status requires: read:test_status
-TEST_BACKEND_SCOPES = os.getenv(
-    "TEST_BACKEND_SCOPES",
-    ""
-)
+# Format:   comma-separated list; spaces around each scope are ignored.
+# Example:  read:test_status,read:test_owner
+# Default:  "" (no scopes -> every protected call raises PermissionError).
+# Required: get_test_status needs read:test_status
+TEST_BACKEND_SCOPES = os.getenv("TEST_BACKEND_SCOPES", "")
 
 
 # --------------------------------------------------
@@ -73,19 +62,9 @@ TEST_BACKEND_SCOPES = os.getenv(
 # Only BackendTransientError is retried; validation,
 # authentication and authorization errors fail at once.
 # Must be a whole number >= 1. Default: 3.
-MAX_RETRIES = int(
-    os.getenv(
-        "MAX_RETRIES",
-        "3"
-    )
-)
+MAX_RETRIES = int(os.getenv("MAX_RETRIES", "3"))
 
 # Fixed wait, in seconds, between retry attempts
 # (no exponential backoff). Decimals are allowed,
 # e.g. 0.5. Default: 1.
-RETRY_DELAY_SECONDS = float(
-    os.getenv(
-        "RETRY_DELAY_SECONDS",
-        "1"
-    )
-)
+RETRY_DELAY_SECONDS = float(os.getenv("RETRY_DELAY_SECONDS", "1"))
