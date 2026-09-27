@@ -4,12 +4,13 @@ from anthropic import Anthropic
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
+from config import MAX_ITERATIONS
+
 
 claude = Anthropic()
 
 MODEL_NAME = "claude-haiku-4-5-20251001"
 MAX_TOKENS = 700
-MAX_ITERATIONS = 5
 
 SYSTEM_PROMPT = """
 You are an AI Test Failure Investigator.

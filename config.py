@@ -68,3 +68,9 @@ MAX_RETRIES = int(os.getenv("MAX_RETRIES", "3"))
 # (no exponential backoff). Decimals are allowed,
 # e.g. 0.5. Default: 1.
 RETRY_DELAY_SECONDS = float(os.getenv("RETRY_DELAY_SECONDS", "1"))
+
+# Maximum number of agent-loop iterations before the
+# investigation stops, even if the model keeps requesting
+# tool calls. Prevents unbounded tool-calling loops.
+# Must be a whole number >= 1. Default: 5.
+MAX_ITERATIONS = int(os.getenv("MAX_ITERATIONS", "5"))
